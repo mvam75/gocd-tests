@@ -5,7 +5,7 @@ environments:
     pipelines:
       - yaml-example
 pipelines:
-  - group: example-service
+    group: example-service
     pipeline_template: build
     pipeline:
       label_template: 1.${COUNT}.0
@@ -19,7 +19,7 @@ pipelines:
       parameters:
         - name: CONFIG_FILE
           value: config.yml
-  - group: example-service
+    group: example-service
     pipeline_template: deploy
     pipeline:
       label_template: ${example-service-build}
@@ -43,7 +43,7 @@ pipelines:
          value: Build
        - name: UPSTREAM_JOB
          value: build
-  - group: example-service
+    group: example-service
     pipeline_template: deploy
     pipeline:
       label_template: ${example-service-qa}
