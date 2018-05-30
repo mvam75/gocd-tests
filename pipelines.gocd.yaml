@@ -1,3 +1,9 @@
+environments:
+  example:
+    environment_variables:
+      EXAMPLE_DEPLOYMENT: testing
+    pipelines:
+      - yaml-example
 pipelines:
   - group: example-service
     pipeline_template: build
