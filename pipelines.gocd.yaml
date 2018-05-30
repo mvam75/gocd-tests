@@ -19,7 +19,7 @@ pipelines:
                    command: make
   "yaml-example": 
     group: yaml-example
-    label_template: "${mygit[:8]}"
+    label_template: "${mavengit[:8]}"
     locking: off
     materials:
       mavengit: # this is the name of material
