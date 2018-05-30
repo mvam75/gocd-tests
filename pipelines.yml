@@ -1,0 +1,141 @@
+---
+# A list of pipelines where each item is a YAML representation of https://api.go.cd/current/#the-pipeline-config-object
+pipelines:
+  - group: example-service
+    pipeline_template: build
+    pipeline:
+      label_template: 1.${COUNT}.0
+      name: example-service-build
+      materials:
+        - type: git
+          attributes:
+            url: https://github.com/dennisgranath/example-service.git
+            branch: master
+            auto_update: false
+      parameters:
+        - name: CONFIG_FILE
+          value: config.yml
+  - group: example-service
+    pipeline_template: deploy
+    pipeline:
+      label_template: ${example-service-build}
+      name: example-service-qa
+      materials:
+        - type: dependency
+          attributes:
+            pipeline: example-service-build
+            stage: Build
+            auto_update: true
+      parameters:
+       - name: CONFIG_FILE
+         value: config.yml
+       - name: TARGET
+         value: app-server
+       - name: SERVICE_NAME
+         value: example-service
+       - name: UPSTREAM_PIPELINE
+         value: example-service-build
+       - name: UPSTREAM_STAGE
+         value: Build
+       - name: UPSTREAM_JOB
+         value: build
+  - group: example-service
+    pipeline_template: deploy
+    pipeline:
+      label_template: ${example-service-qa}
+      name: example-service-prod
+      materials:
+        - type: dependency
+          attributes:
+            pipeline: example-service-qa
+            stage: Deploy
+            auto_update: true
+      parameters:
+        - name: CONFIG_FILE
+          value: config.yml
+        - name: TARGET
+          value: app-server
+        - name: SERVICE_NAME
+          value: example-service
+        - name: UPSTREAM_PIPELINE
+          value: example-service-qa
+        - name: UPSTREAM_STAGE
+          value: Deploy
+        - name: UPSTREAM_JOB
+          value: deploy
+
+templates:
+  deploy:
+    pipeline:
+      stages:
+        - name: Deploy
+          jobs:
+            - name: deploy
+              artifacts:
+                - source: target
+                  type: build
+                - source: '#{CONFIG_FILE}'
+                  type: build
+              tasks:
+                - type: fetch
+                  attributes:
+                    pipeline: '#{UPSTREAM_PIPELINE}'
+                    stage: '#{UPSTREAM_STAGE}'
+                    job: '#{UPSTREAM_JOB}'
+                    source: target
+                - type: fetch
+                  attributes:
+                    pipeline: '#{UPSTREAM_PIPELINE}'
+                    stage: '#{UPSTREAM_STAGE}'
+                    job: '#{UPSTREAM_JOB}'
+                    source: '#{CONFIG_FILE}'
+                    is_source_a_file: true
+                - type: exec
+                  attributes:
+                    command: /bin/bash
+                    arguments:
+                      - -c
+                      - ansible all -i "#{TARGET}," -u root -m copy -a "src=target/#{SERVICE_NAME}-${GO_PIPELINE_LABEL}.jar dest=/root/#{SERVICE_NAME}.jar"
+                - type: exec
+                  attributes:
+                    command: /bin/bash
+                    arguments:
+                      - -c
+                      - ansible all -i "#{TARGET}," -u root -m copy -a "src=#{CONFIG_FILE} dest=/root/config.yml"
+                - type: exec
+                  attributes:
+                    command: /bin/bash
+                    arguments:
+                      - -c
+                      - ansible all -i "#{TARGET}," -u root -m shell -a "killall java || true"
+                - type: exec
+                  attributes:
+                    command: /bin/bash
+                    arguments:
+                      - -c
+                      - ansible all -i "#{TARGET}," -u root -m shell -a "java -jar /root/#{SERVICE_NAME}.jar server /root/#{CONFIG_FILE} > app.out 2> app.err < /dev/null &"
+
+  build:
+    pipeline:
+      stages:
+        - name: Build
+          jobs:
+            - name: build
+              artifacts:
+                - source: target
+                  type: build
+                - source: '#{CONFIG_FILE}'
+                  type: build
+              tasks:
+                - type: exec
+                  attributes:
+                    command: /bin/bash
+                    arguments:
+                      - -c
+                      - mvn versions:set -DnewVersion=${GO_PIPELINE_LABEL}
+                - type: exec
+                  attributes:
+                    command: /bin/bash
+                    arguments:
+                      - -c
+                      - mvn clean install
