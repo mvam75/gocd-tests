@@ -23,7 +23,7 @@ pipelines:
     label_template: "${mygit[:8]}"
     locking: off
     materials:
-      mygit: # this is the name of material
+      mavengit: # this is the name of material
         # keyword git says about type of material and url at once
         git: https://github.com/PPPInc/maven.git
         branch: dev
